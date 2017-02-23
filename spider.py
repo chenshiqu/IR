@@ -23,8 +23,9 @@ class Spider:
         for line in urlop:
             line = line.decode('utf-8')
             if mark.match(line):
-                disallow = re.split(':', line)
+                disallow = re.split(': /', line)
                 disallow_url = disallow[1].strip()
+                print(disallow_url)
                 self.disallow.append(disallow_url)
 
     def fetch(self):
@@ -36,10 +37,6 @@ class Spider:
 
         while self.queue:
             url = self.queue.popleft()
-            if url in self.disallow:  # check whether the url is accessible
-                print('\ndisallow\n')
-                continue
-
             self.visited |= {url}  # remark as visited
 
             print('already fetch: ' + str(cnt) + '  fetching <----' + url)
@@ -61,12 +58,16 @@ class Spider:
             # fetch url from page
             linkre = re.compile('href="(.+?)"')
             for x in linkre.findall(data):
-                if 'http' in x and x not in self.visited:
+                # if 'http' in x and x not in self.visited:
+                for disallow in self.disallow:
+                    mark = re.compile(disallow)
+                    if mark.match(x):
+                        break
                     self.queue.append(x)
                     print('add to queue---> ' + x)
 
 
 if __name__ == '__main__':
     '''main program'''
-    spider = Spider(url='http://lyle.smu.edu/~fmoore', limit=20)
-    spider.robots()
+    spider = Spider(url='http://lyle.smu.edu/~fmoore', limit=1)
+    spider.fetch()
