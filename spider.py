@@ -1,6 +1,7 @@
 # encoding: UTF-8
 import urllib.request
 import urllib
+from urllib import parse
 import re
 from collections import deque
 
@@ -9,11 +10,15 @@ class Spider:
     '''a specific crawler for http://lyle.smu.edu/~fmoore'''
 
     def __init__(self, url, limit):
-        self.queue = deque()
+        '''paramaters
+        @url :the begin url
+        @limit : the limit on the number of pages to be retrieve
+        '''
+        self.queue = deque()  # containing urls yet to be fetched
         self.visited = set()  # set of url that have been fetched
-        self.disallow = []
-        self.url = url
-        self.limit = limit
+        self.disallow = []    # containing urls that disallow to access
+        self.url = url        # begin page to be crawled
+        self.limit = limit    # limit on the number of pages to be retrieve
 
     def robots(self):
         '''fetch robots.txt and get disallow url'''
@@ -27,6 +32,38 @@ class Spider:
                 disallow_url = disallow[1].strip()
                 print(disallow_url)
                 self.disallow.append(disallow_url)
+
+    def checkPermit(self, url):
+        '''check weather access the url is disallow
+            @return 0: allow
+                    1: disallow
+        '''
+        for disallow_url in self.disallow:
+            mark = re.compile(disallow_url)
+            if mark.match(url):
+                return 1
+        return 0
+
+    def urlFormalize(self, rawUrl):
+        ''' ensure urls do not go out of root direction
+            transfer relative url to absolute url
+        '''
+        components = parse.urlparse(rawUrl)
+        formalUrl = rawUrl
+        if components.scheme == "http":  # absolute url
+            if components.netloc != 'lyle.smu.edu':  # out of root
+                formalUrl = ''
+            else:
+                mark = re.compile('~fmoore')
+                if mark.match(components.path):  # out of root
+                    formalUrl = ''
+        elif components.scheme == "":  # relative url
+            # transfer relative url to absolute url
+            formalUrl = parse.urljoin(self.url + '/', rawUrl)
+        else:
+            formalUrl = ''
+
+        return formalUrl
 
     def fetch(self):
         '''fetch url'''
@@ -45,7 +82,7 @@ class Spider:
             if cnt > self.limit:
                 break
 
-            urlop = urllib.request.urlopen(url)
+            urlop = urllib.request.urlopen(url)  # crawling data
             if 'html' not in urlop.getheader('Content-Type'):
                 continue
 
@@ -58,16 +95,14 @@ class Spider:
             # fetch url from page
             linkre = re.compile('href="(.+?)"')
             for x in linkre.findall(data):
-                # if 'http' in x and x not in self.visited:
-                for disallow in self.disallow:
-                    mark = re.compile(disallow)
-                    if mark.match(x):
-                        break
-                    self.queue.append(x)
-                    print('add to queue---> ' + x)
+                print(x)
+                formalUrl = self.urlFormalize(x)
+                if formalUrl != '':
+                    self.queue.append(formalUrl)
+                    print('add to queue---> ' + formalUrl)
 
 
 if __name__ == '__main__':
-    '''main program'''
+    '''main process'''
     spider = Spider(url='http://lyle.smu.edu/~fmoore', limit=1)
     spider.fetch()
