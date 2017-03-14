@@ -20,6 +20,8 @@ class Spider:
         self.allUrl = set()     # containing all url in the root url
         self.outUrl = set()     # containing all url that out root
         self.brokenUrl = set()  # saving broken url
+        self.image = set()      # saving image url
+        self.application = set()        # saving application file url
         self.url = url          # begin page to be crawled
         self.limit = limit      # limit on the number of pages to be retrieve
 
@@ -47,7 +49,7 @@ class Spider:
                 return 1
         return 0
 
-    def urlFormalize(self, rawUrl):
+    def urlFormalize(self, currentUrl, rawUrl):
         ''' ensure urls do not go out of root direction
             transfer relative url to absolute url
         '''
@@ -60,21 +62,46 @@ class Spider:
             if components.netloc != 'lyle.smu.edu':  # out of root
                 self.outUrl |= {rawUrl}
                 formalUrl = ''
+                print('    out of root')
             else:
-                mark = re.compile('~fmoore')
-                if mark.match(components.path):  # out of root
+                mark = re.compile('/~fmoore')
+                if mark.match(components.path) is None:  # out of root
                     self.outUrl |= {rawUrl}
                     formalUrl = ''
+                    print("    out of root")
         elif components.scheme == "":  # relative url
             # transfer relative url to absolute url
-            formalUrl = parse.urljoin(self.url + '/', rawUrl)
+            formalUrl = parse.urljoin(currentUrl, rawUrl)
+            mark = re.compile(self.url)
+            if mark.match(formalUrl) is None:  # out of root
+                formalUrl = ''
         else:
             formalUrl = ''
 
+        # if url end with /, add index.html to the url
+        # if formalUrl != '' and formalUrl[-1] == '/':
+        #    formalUrl = formalUrl + 'index.html'
+
         return formalUrl
 
-    def parse():
-        '''address response data'''
+    def urlDuplicate(self, url):
+        ''' eliminate duplicate url
+            @return 0: not duplicate
+                    1: duplicate
+        '''
+        duplication = 0
+        if url in self.visited:
+            duplication = 1
+        if url in self.queue:
+            duplication = 1
+        return duplication
+
+    def parse(self, response):
+        ''' address response data
+            @response: a response object of a url request
+            @return
+
+        '''
         pass
 
     def fetch(self):
@@ -92,46 +119,77 @@ class Spider:
                 continue
             self.visited |= {url}  # remark as visited
 
+            print('already fetch: ' + str(cnt) + '  fetching <----' + url)
+
             # limit
             cnt += 1
             if cnt > self.limit:
                 break
-
-            print('already fetch: ' + str(cnt) + '  fetching <----' + url)
 
             # crawling data
             req = urllib.request.Request(url)
             try:
                 urlop = urllib.request.urlopen(req)
             except urllib.error.HTTPError:
-                self.brokenUrl.append(url)
+                self.brokenUrl |= {url}
+                print("  HTTPError")
+                print("----------------------------------------")
                 continue
             except urllib.error.URLError:
-                self.brokenUrl.append(url)
+                self.brokenUrl |= {url}
                 continue
 
-            # parsing data
-            if 'html' not in urlop.getheader('Content-Type'):
+            # deal with different response file type
+            fileType = urlop.getheader('Content-Type')
+            if 'text' in fileType:  # text file include txt, htm, html
+                print('   text file %s' % urlop.geturl())
+                # address exception
+                try:
+                    data = urlop.read().decode('utf-8')
+                except:
+                    continue
+
+                # parse data
+                self.parse(data)
+
+                # fetch url from page
+                linkre = re.compile('href="(.+?)"')
+                for x in linkre.findall(data):
+                    print("   fetch %s" % x)
+                    self.allUrl |= {x}
+                    formalUrl = self.urlFormalize(urlop.geturl(), x)
+                    if formalUrl != '':
+                        d = self.urlDuplicate(formalUrl)  # duplicattion check
+                        if d == 0:
+                            self.queue.append(formalUrl)
+                            print('   add to queue---> ' + formalUrl)
+                        else:
+                            print("    duplication")
+
+            elif 'image' in fileType:  # image
+                print("   image file")
+                self.image |= {url}
+                print("----------------------------------------")
+                continue
+            else:                      # other type like pdf
+                print("   application")
+                self.application |= {url}
+                print('-----------------------------------------')
                 continue
 
-            # address exception
-            try:
-                data = urlop.read().decode('utf-8')
-            except:
-                continue
+            print('------------------------------------------')
 
-            # fetch url from page
-            linkre = re.compile('href="(.+?)"')
-            for x in linkre.findall(data):
-                print(x)
-                self.allUrl |= {x}
-                formalUrl = self.urlFormalize(x)
-                if formalUrl != '':
-                    self.queue.append(formalUrl)
-                    print('add to queue---> ' + formalUrl)
+    def report(self):
+        print('visited url')
+        for i in self.visited:
+            print(i)
+        print('---------------------')
+        print('queue')
+        print(self.queue)
 
 
 if __name__ == '__main__':
     '''main process'''
-    spider = Spider(url='http://lyle.smu.edu/~fmoore', limit=1)
+    spider = Spider(url='http://lyle.smu.edu/~fmoore', limit=40)
     spider.fetch()
+    spider.report()
