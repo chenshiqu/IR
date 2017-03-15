@@ -4,10 +4,14 @@ import urllib
 from urllib import parse
 import re
 from collections import deque
+from bs4 import BeautifulSoup
+from doc import Document
 
 
 class Spider:
-    '''a specific crawler for http://lyle.smu.edu/~fmoore'''
+    ''' a specific crawler for http://lyle.smu.edu/~fmoore
+        @author Shiqu Chen
+    '''
 
     def __init__(self, url, limit):
         ''' paramaters
@@ -24,6 +28,8 @@ class Spider:
         self.application = set()        # saving application file url
         self.url = url          # begin page to be crawled
         self.limit = limit      # limit on the number of pages to be retrieve
+        self.docNumber = 0
+        self.docList = []
 
     def robots(self):
         '''fetch robots.txt and get disallow url'''
@@ -96,13 +102,58 @@ class Spider:
             duplication = 1
         return duplication
 
-    def parse(self, response):
+    def parse(self, contentType, data):
         ''' address response data
-            @response: a response object of a url request
+            @contentType
+            @data
             @return
-
         '''
-        pass
+        if 'html' in contentType:
+            # extract text from html file
+            soup = BeautifulSoup(data, "lxml")
+            # kill all script and style elements
+            for script in soup(["script", "style"]):
+                script.extract()
+            # get title
+            title = soup.title.string
+            # get text
+            text = soup.body.get_text()
+            # break into lines and remove leading adn trailing spaces
+            lines = (line.strip() for line in text.splitlines())
+            # break multi-headlines into a line each
+            chunks = []
+            for line in lines:
+                for phrase in line.split("  "):
+                    chunks.append(phrase.strip())
+            # drop blank lines
+            text = '\n'.join(chunk for chunk in chunks if chunk)
+
+            # write to local file
+            self.docNumber += 1
+            filename = "doc_" + str(self.docNumber) + ".txt"
+            with open(filename, 'w') as f:
+                f.write(text)
+            document = Document(self.docNumber, filename, 'html')
+            document.setTitle(title)
+            self.docList.append(document)
+
+        else:      # txt file
+            lines = (line.strip() for line in data.splitlines())
+            # break multi-headlines into a line each
+            chunks = []
+            for line in lines:
+                for phrase in line.split("  "):
+                    chunks.append(phrase.strip())
+            # drop blank lines
+            text = '\n'.join(chunk for chunk in chunks if chunk)
+
+            # write to local file
+            self.docNumber += 1
+            filename = "doc_" + str(self.docNumber) + ".txt"
+            with open(filename, "w") as f:
+                f.write(text)
+            document = Document(self.docNumber, filename, 'txt')
+            self.docList.append(document)
 
     def fetch(self):
         '''whole fetching process'''
@@ -147,10 +198,11 @@ class Spider:
                 try:
                     data = urlop.read().decode('utf-8')
                 except:
+                    print("------------------------------------------")
                     continue
 
                 # parse data
-                self.parse(data)
+                self.parse(fileType, data)
 
                 # fetch url from page
                 linkre = re.compile('href="(.+?)"')
@@ -186,6 +238,8 @@ class Spider:
         print('---------------------')
         print('queue')
         print(self.queue)
+        for d in self.docList:
+            d.stem()
 
 
 if __name__ == '__main__':
