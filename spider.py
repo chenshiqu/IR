@@ -6,6 +6,8 @@ import re
 from collections import deque
 from bs4 import BeautifulSoup
 from doc import Document
+from doc import Dictionary
+import operator
 
 
 class Spider:
@@ -30,6 +32,7 @@ class Spider:
         self.limit = limit      # limit on the number of pages to be retrieve
         self.docNumber = 0
         self.docList = []
+        self.term = Dictionary()
 
     def robots(self):
         '''fetch robots.txt and get disallow url'''
@@ -231,6 +234,17 @@ class Spider:
 
             print('------------------------------------------')
 
+    def collection(self):
+        '''term collection'''
+        for d in self.docList:
+            dTerm = d.getTerm()
+            for key in dTerm.keys():
+                if self.term[key] != 0:
+                    self.term[key] += 1
+                else:
+                    self.term[key] = 1
+        print(self.term)
+
     def report(self):
         print('visited url')
         for i in self.visited:
@@ -238,8 +252,21 @@ class Spider:
         print('---------------------')
         print('queue')
         print(self.queue)
+        print('stemming........................')
         for d in self.docList:
             d.stem()
+        print('------------------------------------------')
+        print('collection processing......................')
+        for d in self.docList:
+            d.collection()
+            # print(d.getTerm())
+
+        self.collection()
+
+        # ranking
+        print('-------------------------------------------------------')
+        sorted_term = sorted(self.term.items(), key=operator.itemgetter(1))
+        print(sorted_term)
 
 
 if __name__ == '__main__':
