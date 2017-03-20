@@ -14,8 +14,9 @@ class Document:
         @author: Shiqu Chen
     '''
 
-    def __init__(self, docID, fileName, fileType):
+    def __init__(self, url, docID, fileName, fileType):
 
+        self.url = url
         self.docID = docID
         self.name = fileName
         self.type = fileType
@@ -59,7 +60,7 @@ class Document:
                 for word in words:
                     token = word.split('/')
                     for t in token:
-                        t = t.rstrip(',.:-')
+                        t = t.rstrip(',.:-=')
                         if t != '':
                             if self.term[t] == 0:
                                 self.term[t] = 1
@@ -68,3 +69,9 @@ class Document:
 
     def getTerm(self):
         return self.term
+
+    def getID(self):
+        return self.docID
+
+    def getUrl(self):
+        return self.url

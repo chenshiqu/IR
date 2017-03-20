@@ -105,11 +105,11 @@ class Spider:
             duplication = 1
         return duplication
 
-    def parse(self, contentType, data):
+    def parse(self, url, contentType, data):
         ''' address response data
             @contentType
             @data
-            @return
+            @return 1:duplicate
         '''
         if 'html' in contentType:
             # extract text from html file
@@ -136,9 +136,9 @@ class Spider:
             filename = "doc_" + str(self.docNumber) + ".txt"
             with open(filename, 'w') as f:
                 f.write(text)
-            document = Document(self.docNumber, filename, 'html')
+            document = Document(url, self.docNumber, filename, 'html')
             document.setTitle(title)
-            self.docList.append(document)
+            # self.docList.append(document)
 
         else:      # txt file
             lines = (line.strip() for line in data.splitlines())
@@ -155,8 +155,25 @@ class Spider:
             filename = "doc_" + str(self.docNumber) + ".txt"
             with open(filename, "w") as f:
                 f.write(text)
-            document = Document(self.docNumber, filename, 'txt')
+            document = Document(url, self.docNumber, filename, 'txt')
+            # self.docList.append(document)
+
+        # term stemming and collection
+        document.stem()
+        document.collection()
+        # duplicate detection
+        duplicate = 0
+        for d in self.docList:
+            print(d.getID())
+            if self.duplicateDetection(document, d) == 1:
+                print('duplicate to %d' % d.getID())
+                duplicate = 1
+                break
+        if duplicate == 0:
             self.docList.append(document)
+            return 0
+        else:
+            return 1
 
     def fetch(self):
         '''whole fetching process'''
@@ -205,7 +222,11 @@ class Spider:
                     continue
 
                 # parse data
-                self.parse(fileType, data)
+                t = self.parse(urlop.geturl(), fileType, data)
+                if t == 1:
+                    print('content duplicate')
+                    print('------------------------------------------')
+                    continue
 
                 # fetch url from page
                 linkre = re.compile('href="(.+?)"')
@@ -245,6 +266,24 @@ class Spider:
                     self.term[key] = 1
         print(self.term)
 
+    def duplicateDetection(self, doc1, doc2):
+        ''' using k-shingles to detect near-duplication
+            here k=1
+            doc1 and doc2: document object
+            @return 1:duplicate 0: not duplicate
+        '''
+        dTerm1 = doc1.getTerm()
+        dTerm2 = doc2.getTerm()
+        termSet1 = set(dTerm1.keys())
+        termSet2 = set(dTerm2.keys())
+
+        Jaccard = len(termSet1 & termSet2) / len(termSet1 | termSet2)
+        print("Jaccard: %f" % Jaccard)
+        if Jaccard > 0.9:
+            return 1
+        else:
+            return 0
+
     def report(self):
         print('visited url')
         for i in self.visited:
@@ -252,6 +291,7 @@ class Spider:
         print('---------------------')
         print('queue')
         print(self.queue)
+        '''
         print('stemming........................')
         for d in self.docList:
             d.stem()
@@ -260,13 +300,21 @@ class Spider:
         for d in self.docList:
             d.collection()
             # print(d.getTerm())
-
+        '''
+        print('------------------------------')
+        print(len(self.docList))
+        for d in self.docList:
+            print(d.getUrl())
         self.collection()
 
         # ranking
         print('-------------------------------------------------------')
         sorted_term = sorted(self.term.items(), key=operator.itemgetter(1))
-        print(sorted_term)
+        # print(sorted_term)
+        i = 1
+        while i <= 20:
+            print(sorted_term[-i])
+            i += 1
 
 
 if __name__ == '__main__':
