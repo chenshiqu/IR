@@ -15,7 +15,7 @@ class Spider:
         @author Shiqu Chen
     '''
 
-    def __init__(self, url, limit):
+    def __init__(self, url, limit, stop):
         ''' paramaters
             @url :the begin url
             @limit : the limit on the number of pages to be retrieve
@@ -33,6 +33,7 @@ class Spider:
         self.docNumber = 0
         self.docList = []
         self.term = Dictionary()
+        self.stop = stop          # stop word
 
     def robots(self):
         '''fetch robots.txt and get disallow url'''
@@ -67,7 +68,8 @@ class Spider:
         if self.checkPermit(components.path) == 1:  # if url is disallow
             formalUrl = ''
             return formalUrl
-        if components.scheme == "http":  # absolute url
+        # absolute url
+        if components.scheme == "http" or components.scheme == "https":
             if components.netloc != 'lyle.smu.edu':  # out of root
                 self.outUrl |= {rawUrl}
                 formalUrl = ''
@@ -263,8 +265,8 @@ class Spider:
                 if self.term[key] != 0:
                     self.term[key] += 1
                 else:
-                    self.term[key] = 1
-        print(self.term)
+                    self.term[key] = dTerm[key]
+        # print(self.term)
 
     def duplicateDetection(self, doc1, doc2):
         ''' using k-shingles to detect near-duplication
@@ -284,6 +286,12 @@ class Spider:
         else:
             return 0
 
+    def stopwordEliminate(self):
+        '''delete stop word from the dictionary'''
+        for word in self.stop:
+            if word in self.term.keys():
+                self.term.pop(word)
+
     def report(self):
         print('visited url')
         for i in self.visited:
@@ -291,6 +299,14 @@ class Spider:
         print('---------------------')
         print('queue')
         print(self.queue)
+        print('------------------------------------')
+        print('out root url:')
+        for url in self.outUrl:
+            print(url)
+        print('--------------------------------------')
+        print('all urls')
+        for url in self.allUrl:
+            print(url)
         '''
         print('stemming........................')
         for d in self.docList:
@@ -301,11 +317,26 @@ class Spider:
             d.collection()
             # print(d.getTerm())
         '''
+        print('-----------------------------------------')
+        print('broken url')
+        for url in self.brokenUrl:
+            print(url)
+        print('---------------------------------')
+        print('image')
+        for url in self.image:
+            print(url)
+        print('---------------------------------')
+        print('title')
+        for doc in self.docList:
+            print(doc.getID())
+            print(doc.getUrl())
+            print(doc.getTitle())
         print('------------------------------')
-        print(len(self.docList))
-        for d in self.docList:
-            print(d.getUrl())
+
         self.collection()
+
+        # delete stop word
+        self.stopwordEliminate()
 
         # ranking
         print('-------------------------------------------------------')
@@ -319,6 +350,9 @@ class Spider:
 
 if __name__ == '__main__':
     '''main process'''
-    spider = Spider(url='http://lyle.smu.edu/~fmoore', limit=40)
+    Limit = 40
+    stopWord = ['to']
+    URL = 'http://lyle.smu.edu/~fmoore'
+    spider = Spider(url=URL, limit=Limit, stop=stopWord)
     spider.fetch()
     spider.report()

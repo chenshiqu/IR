@@ -60,7 +60,8 @@ class Document:
                 for word in words:
                     token = word.split('/')
                     for t in token:
-                        t = t.rstrip(',.:-=')
+                        t = t.lstrip('({')
+                        t = t.rstrip(',.:-=)}')
                         if t != '':
                             if self.term[t] == 0:
                                 self.term[t] = 1
@@ -75,3 +76,6 @@ class Document:
 
     def getUrl(self):
         return self.url
+
+    def getTitle(self):
+        return self.title
