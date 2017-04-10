@@ -263,7 +263,7 @@ class Spider:
             dTerm = d.getTerm()
             for key in dTerm.keys():
                 if self.term[key] != 0:
-                    self.term[key] += 1
+                    self.term[key] += dTerm[key]
                 else:
                     self.term[key] = dTerm[key]
         # print(self.term)
