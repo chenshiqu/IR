@@ -35,6 +35,8 @@ class Spider:
         self.term = Dictionary()
         self.stop = stop          # stop word
 
+        self.dictionary = []    # using string array to store dictonary
+
     def robots(self):
         '''fetch robots.txt and get disallow url'''
         mark = re.compile(r'Disallow:')
@@ -200,7 +202,8 @@ class Spider:
                 break
 
             # crawling data
-            req = urllib.request.Request(url)
+            header = {'User-Agent': 'spider(Linux 16.04)'}
+            req = urllib.request.Request(url, headers=header)
             try:
                 urlop = urllib.request.urlopen(req)
             except urllib.error.HTTPError:
@@ -219,7 +222,7 @@ class Spider:
                 # address exception
                 try:
                     data = urlop.read().decode('utf-8')
-                except:
+                except UnicodeError:
                     print("------------------------------------------")
                     continue
 
@@ -231,7 +234,7 @@ class Spider:
                     continue
 
                 # fetch url from page
-                linkre = re.compile('href="(.+?)"')
+                linkre = re.compile('href=[\'"]?([^\'" >]+)')
                 for x in linkre.findall(data):
                     print("   fetch %s" % x)
                     self.allUrl |= {x}
@@ -266,7 +269,12 @@ class Spider:
                     self.term[key] += dTerm[key]
                 else:
                     self.term[key] = dTerm[key]
-        # print(self.term)
+
+        # dictionary initial
+        self.dictionary = list(self.term.keys())
+        with open("dictionary.txt", "a") as f:
+            for word in self.dictionary:
+                f.write(word + '\n')
 
     def duplicateDetection(self, doc1, doc2):
         ''' using k-shingles to detect near-duplication
