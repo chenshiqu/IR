@@ -1,5 +1,6 @@
 # encoding: UTF-8
 import stemming
+import re
 
 
 class Dictionary(dict):
@@ -56,17 +57,20 @@ class Document:
         '''extract term and term frequency'''
         with open(self.sName) as f:
             for line in f.readlines():
-                words = line.split()
+                matchWord = re.compile('[A-Za-z]+')
+                words = matchWord.findall(line)
                 for word in words:
-                    token = word.split('/')
-                    for t in token:
-                        t = t.lstrip('+"%*#<({\'[~')
-                        t = t.rstrip('",.:-+=)};\'>]!?')
-                        if t != '':
-                            if self.term[t] == 0:
-                                self.term[t] = 1
-                            else:
-                                self.term[t] += 1
+                    if self.term[word] == 0:
+                        self.term[word] = 1
+                    else:
+                        self.term[word] += 1
+                matchNumber = re.compile('[0-9]+')
+                numbers = matchNumber.findall(line)
+                for number in numbers:
+                    if self.term[number] == 0:
+                        self.term[number] = 1
+                    else:
+                        self.term[number] += 1
 
     def getTerm(self):
         return self.term

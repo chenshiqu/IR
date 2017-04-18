@@ -8,6 +8,8 @@ from bs4 import BeautifulSoup
 from doc import Document
 from doc import Dictionary
 import operator
+from engine import Engine
+import math
 
 
 class Spider:
@@ -36,6 +38,7 @@ class Spider:
         self.stop = stop          # stop word
 
         self.dictionary = []    # using string array to store dictonary
+        self.idf = Dictionary()  # term idf
 
     def robots(self):
         '''fetch robots.txt and get disallow url'''
@@ -202,7 +205,7 @@ class Spider:
                 break
 
             # crawling data
-            header = {'User-Agent': 'spider(Linux 16.04)'}
+            header = {'User-Agent': 'spider(Linux 16.04)'}  # set agent
             req = urllib.request.Request(url, headers=header)
             try:
                 urlop = urllib.request.urlopen(req)
@@ -269,12 +272,28 @@ class Spider:
                     self.term[key] += dTerm[key]
                 else:
                     self.term[key] = dTerm[key]
+        # print(self.term)
 
         # dictionary initial
         self.dictionary = list(self.term.keys())
         with open("dictionary.txt", "a") as f:
             for word in self.dictionary:
                 f.write(word + '\n')
+
+    '''def buildMatrix():'''
+    '''create the word/document frequency matrix'''
+
+    def idfInit(self):
+        '''initial term idf'''
+        totalDoc = len(self.docList)
+        for word in self.dictionary:
+            df = 0
+            for d in self.docList:
+                dTerm = d.getTerm()
+                if dTerm[word] != 0:
+                    df = df + 1
+            self.idf[word] = math.log(totalDoc / df, 10)
+        # print(self.idf)
 
     def duplicateDetection(self, doc1, doc2):
         ''' using k-shingles to detect near-duplication
@@ -343,6 +362,8 @@ class Spider:
 
         self.collection()
 
+        self.idfInit()
+
         # delete stop word
         self.stopwordEliminate()
 
@@ -355,12 +376,21 @@ class Spider:
             print(sorted_term[-i])
             i += 1
 
+    def getDoc(self):
+        return self.docList
+
+    def getIdf(self):
+        return self.idf
+
 
 if __name__ == '__main__':
     '''main process'''
-    Limit = 40
+    Limit = 50
     stopWord = ['to']
     URL = 'http://lyle.smu.edu/~fmoore'
     spider = Spider(url=URL, limit=Limit, stop=stopWord)
     spider.fetch()
     spider.report()
+    print('-----------------data crawling completed--------------------------')
+    eng = Engine(spider.getDoc(), spider.getIdf())
+    eng.start()
