@@ -369,6 +369,7 @@ class Spider:
 
         # ranking
         print('-------------------------------------------------------')
+        # result = [(term,term frequency),(),...,()]
         sorted_term = sorted(self.term.items(), key=operator.itemgetter(1))
         # print(sorted_term)
         i = 1

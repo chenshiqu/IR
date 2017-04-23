@@ -2,6 +2,7 @@
 from stemming import PorterStemmer
 from doc import Dictionary
 import math
+import operator
 
 
 class Engine:
@@ -23,26 +24,11 @@ class Engine:
         query = query.lower()
         terms = query.split()
         # stemming
-        stem = PorterStemmer()
+        stemmer = PorterStemmer()
         for word in terms:
-            queryTerms.append(stem(word, 0, len(word) - 1))
-        # initial query vectory
-        for word in queryTerms:
-            self.queryV[word] = 1
-        return queryTerms
+            queryTerms.append(stemmer.stem(word, 0, len(word) - 1))
 
-    def docVector(self, queryTerms):
-        '''term frequency and normalization
-            @return docV: list, document vector
-        '''
-        docV = []
-        for doc in self.docList:
-            temp = Dictionary()
-            terms = doc.getTerm()
-            for term in queryTerms:
-                temp[term] = terms[term]
-            docV.append(temp)
-        return docV
+        return queryTerms
 
     def queryVector(self, queryTerms):
         '''term frequency
@@ -52,26 +38,6 @@ class Engine:
         for word in queryTerms:
             queryV[word] = 1
         return queryV
-
-    def weightDoc(self, model, docV):
-        '''calculate tf-idf for doc vector
-            @para model: different weighting model
-            "tf": weight = tf
-            "tf-idf": weight = tf * idf
-            "log": weight = (1 + log(tf)) * idf
-            @return docV : list contains Dictionary
-        '''
-        if model == 'tf':
-            return docV
-        if model == 'tf-idf':
-            for doc in docV:
-                for key in doc.keys():
-                    doc[key] = doc[key] * self.idf[key]
-            return docV
-        if model == 'log':
-            for doc in docV:
-                for key in doc.keys():
-                    doc[key] = (1 + math.log(doc[key])) * self.idf[key]
 
     def weightQuery(self, model, queryV):
         '''calculate tf-idf for query vector
@@ -85,19 +51,6 @@ class Engine:
             for key in queryV.keys():
                 queryV[key] = queryV[key] * self.idf[key]
 
-    def normalizeDoc(self, docV):
-        ''''cosine nomalization'''
-        for doc in docV:
-            # document length
-            length = 0
-            for key in doc.keys():
-                length += math.pow(doc[key], 2)
-            length = math.sqrt(length)
-
-            # normalize
-            for key in doc.keys():
-                doc[key] = doc[key] / length
-
     def normalizeQuery(self, queryV):
         '''cosine normalization'''
         length = 0
@@ -109,10 +62,60 @@ class Engine:
         for key in queryV.keys():
             queryV[key] = queryV[key] / length
 
+    def weightDoc(self):
+        # weight document vector
+        for doc in self.docList:
+            doc.weightDoc('tf-idf', self.idf)
+            doc.normalizeDoc()
+
+    def cosineScore(self, queryV):
+        '''calculate score for each documents'''
+        for doc in self.docList:
+            s = 0
+            docV = doc.getWeight()
+            for key in queryV.keys():
+                s += docV[key] * queryV[key]
+            doc.setScore(s)
+
+    def extraScore(self, queryV):
+        '''add 0.5 to the document if query term appear in the title'''
+        for doc in self.docList:
+            title = doc.getTitle()
+            for word in queryV.keys():
+                if word in title:
+                    doc.setScore(doc.getScore() + 0.5)
+
+    def ranking(self):
+        '''sorting result
+            @return format: [(index,score),(index,score),...]
+        '''
+        length = len(self.docList)
+        # score dictionary
+        docScore = Dictionary()
+        for i in range(length):
+            docScore[i] = self.docList[i].getScore()
+
+        # sorting from small to large
+        sortScore = sorted(docScore.items(), key=operator.itemgetter(1))
+        return sortScore
+
+    def display(self, docScore):
+        '''show result'''
+        # reverse
+        docScore = docScore[::-1]
+        for i in range(6):
+            doc = self.docList[docScore[i][0]]
+            print("%s     %f" % (doc.getTitle(), doc.getScore()))
+            print(doc.getUrl())
+            print(doc.readfile(20))
+            print('\n\n')
+
     def start(self):
         ''' start search engine
             enter "stop" to end
         '''
+        self.weightDoc()
+
         while 1:
             query = input("please typing your query(typing stop to end)> ")
             query = query.strip()
@@ -122,11 +125,17 @@ class Engine:
 
             # query split and stemming
             terms = self.querySplit(query)
-            # term frequency
-            docV = self.docVector(terms)
+
+            # weight query
             queryV = self.queryVector(terms)
-            # weight
-            w_docV = self.weightDoc('tf', docV)
-            w_queryV = self.weightQuery('tf', queryV)
+            self.weightQuery("tf", queryV)
+            self.normalizeQuery(queryV)
+
+            self.cosineScore(queryV)
+            self.extraScore(queryV)
+
+            docScore = self.ranking()
+
+            self.display(docScore)
 
         print('engine closed')

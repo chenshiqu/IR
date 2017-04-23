@@ -1,6 +1,7 @@
 # encoding: UTF-8
 import stemming
 import re
+import math
 
 
 class Dictionary(dict):
@@ -24,6 +25,7 @@ class Document:
         self.sName = ''
         self.title = ''
         self.term = Dictionary()
+        self.weight = Dictionary()
 
     def setTitle(self, title):
         '''set the title of the page'''
@@ -57,6 +59,7 @@ class Document:
         '''extract term and term frequency'''
         with open(self.sName) as f:
             for line in f.readlines():
+                # match word
                 matchWord = re.compile('[A-Za-z]+')
                 words = matchWord.findall(line)
                 for word in words:
@@ -64,6 +67,7 @@ class Document:
                         self.term[word] = 1
                     else:
                         self.term[word] += 1
+                # match number
                 matchNumber = re.compile('[0-9]+')
                 numbers = matchNumber.findall(line)
                 for number in numbers:
@@ -83,3 +87,56 @@ class Document:
 
     def getTitle(self):
         return self.title
+
+    def getWeight(self):
+        return self.weight
+
+    def setScore(self, score):
+        self.score = score
+
+    def getScore(self):
+        return self.score
+
+    def weightDoc(self, model, *args):
+        '''calculate tf-idf for doc vector
+            @para model: different weighting model
+            "tf": weight = tf
+            "tf-idf": weight = tf * idf
+            "log": weight = (1 + log(tf)) * idf
+            args: idf
+        '''
+        if model == 'tf':
+            self.Weight = self.term
+        if model == 'tf-idf':
+            for idf in args:
+                for key in self.term.keys():
+                    self.weight[key] = self.term[key] * idf[key]
+
+        if model == 'log':
+            for idf in args:
+                for k in self.term.keys():
+                    self.weight[k] = (1 + math.log(self.term[k])) * idf[k]
+
+    def normalizeDoc(self):
+        ''''cosine nomalization'''
+        length = 0
+        for key in self.weight.keys():
+            length += math.pow(self.weight[key], 2)
+        length = math.sqrt(length)
+
+        # normalize
+        for key in self.weight.keys():
+            self.weight[key] = self.weight[key] / length
+
+    def readfile(self, number):
+        '''@number: number of word to read'''
+        with open(self.name) as f:
+            content = f.read()
+        match = re.compile("\w+")
+        out = ""
+        words = match.findall(content)
+        for word in words:
+            if number > 0:
+                out = out + " " + word
+                number -= 1
+        return out
