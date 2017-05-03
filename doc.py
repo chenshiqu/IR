@@ -76,6 +76,11 @@ class Document:
                     else:
                         self.term[number] += 1
 
+    def stopWord(self, stop):
+        for word in stop:
+            if word in self.term.keys():
+                self.term.pop(word)
+
     def getTerm(self):
         return self.term
 

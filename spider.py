@@ -301,6 +301,9 @@ class Spider:
             doc1 and doc2: document object
             @return 1:duplicate 0: not duplicate
         '''
+        # delete stop word
+        self.stopwordEliminate()
+
         dTerm1 = doc1.getTerm()
         dTerm2 = doc2.getTerm()
         termSet1 = set(dTerm1.keys())
@@ -315,9 +318,8 @@ class Spider:
 
     def stopwordEliminate(self):
         '''delete stop word from the dictionary'''
-        for word in self.stop:
-            if word in self.term.keys():
-                self.term.pop(word)
+        for doc in self.docList:
+            doc.stopWord(self.stop)
 
     def report(self):
         print('visited url')
@@ -387,11 +389,11 @@ class Spider:
 if __name__ == '__main__':
     '''main process'''
     Limit = 50
-    stopWord = ['to']
+    stopWord = ['to', 'the', 'a']
     URL = 'http://lyle.smu.edu/~fmoore'
     spider = Spider(url=URL, limit=Limit, stop=stopWord)
     spider.fetch()
     spider.report()
     print('-----------------data crawling completed--------------------------')
-    eng = Engine(spider.getDoc(), spider.getIdf())
+    eng = Engine(spider.getDoc(), spider.getIdf(), 6)
     eng.start()

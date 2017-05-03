@@ -3,6 +3,7 @@ from stemming import PorterStemmer
 from doc import Dictionary
 import math
 import operator
+import re
 
 
 class Engine:
@@ -11,12 +12,29 @@ class Engine:
         @author: Shiqu Chen
     '''
 
-    def __init__(self, docList, idf):
+    def __init__(self, docList, idf, N):
         '''@para docList: Document object list
             idf: Dictionary
         '''
         self.docList = docList
         self.idf = idf
+        self.simiDict = []
+        self.similarWord()
+        self.N = N
+
+    def similarWord(self):
+        '''read tresaurus file'''
+        stemmer = PorterStemmer()
+        mark = re.compile('\w+')
+        with open('similar.txt') as f:
+            for line in f.readlines():
+                words = mark.findall(line)
+                if len(words) != 0:
+                    # stemming
+                    w = []
+                    for word in words:
+                        w.append(stemmer.stem(word, 0, len(word) - 1))
+                    self.simiDict.append(w)
 
     def querySplit(self, query):
         '''split query into seperate terms and stemming'''
@@ -80,7 +98,7 @@ class Engine:
     def extraScore(self, queryV):
         '''add 0.5 to the document if query term appear in the title'''
         for doc in self.docList:
-            title = doc.getTitle()
+            title = doc.getTitle().lower()
             for word in queryV.keys():
                 if word in title:
                     doc.setScore(doc.getScore() + 0.5)
@@ -99,22 +117,45 @@ class Engine:
         sortScore = sorted(docScore.items(), key=operator.itemgetter(1))
         return sortScore
 
-    def display(self, docScore):
+    def expansion(self, queryTerm):
+        '''extend the query base on the tresaurus'''
+        newQuery = set()
+        for term in queryTerm:
+            for item in self.simiDict:
+                if term in item:
+                    for t in item:
+                        newQuery.add(t)
+                    break
+
+        newQuery = list(newQuery)
+        return newQuery
+
+    def display(self, docScore, queryTerm):
         '''show result'''
+        print("search result:\n")
         # reverse
+        n = self.N
         docScore = docScore[::-1]
-        for i in range(6):
+        if len(self.docList) < n:
+            r = len(self.docList)
+        else:
+            r = n
+        for i in range(r):
             doc = self.docList[docScore[i][0]]
             print("%s     %f" % (doc.getTitle(), doc.getScore()))
             print(doc.getUrl())
             print(doc.readfile(20))
             print('\n\n')
 
+        # print("query expansion:")
+        # self.expansion(queryTerm)
+
     def start(self):
         ''' start search engine
             enter "stop" to end
         '''
         self.weightDoc()
+        print(self.simiDict)
 
         while 1:
             query = input("please typing your query(typing stop to end)> ")
@@ -136,6 +177,33 @@ class Engine:
 
             docScore = self.ranking()
 
-            self.display(docScore)
+            print("*********************************************************")
+            print("Query: %s" % query)
+            self.display(docScore, terms)
+            print("*********************************************************")
+            # reverse
+            docScore = docScore[::-1]
+            while 1:
+                if docScore[2][1] == 0:
+                    newTerms = self.expansion(terms)
+                    queryV = self.queryVector(newTerms)
+                    self.weightQuery("tf", queryV)
+                    self.normalizeQuery(queryV)
+
+                    self.cosineScore(queryV)
+                    self.extraScore(queryV)
+
+                    docScore = self.ranking()
+                    newQ = ''
+                    for t in newTerms:
+                        newQ = newQ + ' ' + t
+                    print("**************************************************")
+                    print("Query Expension: %s" % newQ)
+                    self.display(docScore, terms)
+                    print("**************************************************")
+                    docScore = docScore[::-1]
+
+                else:
+                    break
 
         print('engine closed')
