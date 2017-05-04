@@ -26,7 +26,7 @@ class Engine:
         '''read tresaurus file'''
         stemmer = PorterStemmer()
         mark = re.compile('\w+')
-        with open('similar.txt') as f:
+        with open('similar.txt', encoding='utf-8') as f:
             for line in f.readlines():
                 words = mark.findall(line)
                 if len(words) != 0:
@@ -183,27 +183,23 @@ class Engine:
             print("*********************************************************")
             # reverse
             docScore = docScore[::-1]
-            while 1:
-                if docScore[2][1] == 0:
-                    newTerms = self.expansion(terms)
-                    queryV = self.queryVector(newTerms)
-                    self.weightQuery("tf", queryV)
-                    self.normalizeQuery(queryV)
+            if docScore[2][1] == 0:
+                newTerms = self.expansion(terms)
+                queryV = self.queryVector(newTerms)
+                self.weightQuery("tf", queryV)
+                self.normalizeQuery(queryV)
 
-                    self.cosineScore(queryV)
-                    self.extraScore(queryV)
+                self.cosineScore(queryV)
+                self.extraScore(queryV)
 
-                    docScore = self.ranking()
-                    newQ = ''
-                    for t in newTerms:
-                        newQ = newQ + ' ' + t
-                    print("**************************************************")
-                    print("Query Expension: %s" % newQ)
-                    self.display(docScore, terms)
-                    print("**************************************************")
-                    docScore = docScore[::-1]
-
-                else:
-                    break
+                docScore = self.ranking()
+                newQ = ''
+                for t in newTerms:
+                    newQ = newQ + ' ' + t
+                print("**************************************************")
+                print("Query Expension: %s" % newQ)
+                self.display(docScore, terms)
+                print("**************************************************")
+                docScore = docScore[::-1]
 
         print('engine closed')

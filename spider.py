@@ -141,7 +141,7 @@ class Spider:
             # write to local file
             self.docNumber += 1
             filename = "doc_" + str(self.docNumber) + ".txt"
-            with open(filename, 'w') as f:
+            with open(filename, 'w', encoding='utf-8') as f:
                 f.write(text)
             document = Document(url, self.docNumber, filename, 'html')
             document.setTitle(title)
@@ -160,7 +160,7 @@ class Spider:
             # write to local file
             self.docNumber += 1
             filename = "doc_" + str(self.docNumber) + ".txt"
-            with open(filename, "w") as f:
+            with open(filename, "w", encoding='utf-8') as f:
                 f.write(text)
             document = Document(url, self.docNumber, filename, 'txt')
             # self.docList.append(document)
@@ -276,7 +276,7 @@ class Spider:
 
         # dictionary initial
         self.dictionary = list(self.term.keys())
-        with open("dictionary.txt", "a") as f:
+        with open("dictionary.txt", "a", encoding='utf-8') as f:
             for word in self.dictionary:
                 f.write(word + '\n')
 

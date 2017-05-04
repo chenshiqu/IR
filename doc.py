@@ -37,7 +37,7 @@ class Document:
         split = self.name.split('.')
         self.sName = split[0] + '_stem' + '.txt'
         stemmer = stemming.PorterStemmer()
-        with open(self.name) as f:
+        with open(self.name, encoding='utf-8') as f:
             while 1:
                 output = ''
                 word = ''
@@ -52,12 +52,12 @@ class Document:
                             output += stemmer.stem(word, 0, len(word) - 1)
                             word = ''
                         output += c.lower()
-                with open(self.sName, 'a') as o:
+                with open(self.sName, 'a', encoding='utf-8') as o:
                     o.write(output)
 
     def collection(self):
         '''extract term and term frequency'''
-        with open(self.sName) as f:
+        with open(self.sName, encoding='utf-8') as f:
             for line in f.readlines():
                 # match word
                 matchWord = re.compile('[A-Za-z]+')
@@ -135,7 +135,7 @@ class Document:
 
     def readfile(self, number):
         '''@number: number of word to read'''
-        with open(self.name) as f:
+        with open(self.name, encoding='utf-8') as f:
             content = f.read()
         match = re.compile("\w+")
         out = ""
